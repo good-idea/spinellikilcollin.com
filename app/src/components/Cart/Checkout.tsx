@@ -18,6 +18,7 @@ import { CheckoutProduct } from './CheckoutProduct'
 import { Affirm } from '../Affirm'
 import { Price } from '../Price'
 import { config } from '../../config'
+import { MESSAGE_ID } from '../../views/Bambuser/BambuserView'
 const { SHOPIFY_CHECKOUT_DOMAIN: domain } = config
 
 /**
@@ -30,6 +31,10 @@ interface FormValues {
 }
 
 const defString = (s: string | undefined): string => (s ? s : '')
+
+const insideIframe = (): boolean => {
+  return window !== window.parent
+}
 
 export const Checkout = () => {
   const { sendBeginCheckout } = useAnalytics()
@@ -60,14 +65,27 @@ export const Checkout = () => {
         quantity: li.quantity,
       })),
     )
-    const hostname = 'checkout.spinellikilcollin.com'
     const webUrl = checkout.webUrl
     const { protocol, pathname, search } = new URL(webUrl)
     /*
       TODO: before we sort out Shopify Buy SDK, hard coded here
     */
-    const redirect: string = `${protocol}//${hostname}${pathname}${search}`
-    window.location.href = redirect
+    const redirect: string = `${protocol}//${domain}${pathname}${search}`
+    if (insideIframe()) {
+      try {
+        window.parent.postMessage(
+          {
+            [MESSAGE_ID]: redirect,
+          },
+          `https://${window.location.hostname}`,
+          [],
+        )
+      } catch (e) {
+        console.log('There is something wrong with the url', e)
+      }
+    } else {
+      window.location.href = redirect
+    }
   }
 
   return (
